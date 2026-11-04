@@ -1,0 +1,24 @@
+# Secrets : ne jamais versionner
+.env
+.env.*
+*.key
+*secret*
+
+# Réglages Claude Code personnels (le .mcp.json du projet, lui, est versionné)
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Sorties générées par scripts/carte_dndi.py
+scripts/resultats.json
+scripts/carte.html
+scripts/matrice_operalta.csv
+
+# Systèmes
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*

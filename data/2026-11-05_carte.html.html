@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carte DNDi Chagas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+<style>
+  /* Thème aligné sur Operalta : fond violet-noir, accent violet, titres en serif */
+  :root {
+    --fond:#151319; --surface:#1d1a23; --surface2:#26222e; --trait:#353140;
+    --texte:#ece8f2; --doux:#a39fae; --accent:#9b5cf6; --accent-clair:#c4a5ff;
+    --vert:#3fbf7f; --jaune:#e8b931; --rouge:#ef5b5b; --gris:#6b6676;
+    --zone-haut:#211c2e; --zone-bas:#1b1820;
+    --serif:"Newsreader", Georgia, serif; --sans:"Inter", system-ui, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { font-family:var(--sans); margin:0; padding:28px clamp(16px, 4vw, 48px) 40px; background:var(--fond); color:var(--texte); line-height:1.5; }
+  a { color:var(--accent-clair); }
+  button { font:inherit; cursor:pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible, .point:focus-visible { outline:2px solid var(--accent-clair); outline-offset:2px; }
+
+  /* En-tête */
+  .marque { color:var(--accent-clair); font-weight:600; font-size:.9rem; margin:0 0 6px; }
+  header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:16px 24px; }
+  h1 { font-family:var(--serif); font-weight:500; font-size:clamp(1.6rem, 3vw, 2.3rem); line-height:1.15; margin:0; max-width:18em; }
+  .barre { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  input, select { background:var(--surface2); color:var(--texte); border:1px solid var(--trait); border-radius:10px; padding:8px 11px; font:inherit; }
+  .barre input { width:170px; }
+  .action { background:var(--accent); color:#fff; border:0; border-radius:999px; padding:9px 16px; font-weight:600; }
+  .action:hover { background:#8b4ae8; }
+  .action:disabled { opacity:.5; cursor:wait; }
+  .secondaire { background:transparent; color:var(--texte); border:1px solid var(--trait); border-radius:999px; padding:8px 14px; }
+  .secondaire:hover { border-color:var(--accent); }
+  #maj { color:var(--doux); font-size:.88rem; margin:14px 0 0; }
+
+  /* Encarts : synthèse et évolution */
+  .encart { background:var(--surface); border:1px solid var(--trait); border-radius:16px; padding:16px 20px; max-width:1040px; margin-top:14px; }
+  .encart:empty { display:none; }
+  #synthese { font-family:var(--serif); font-size:1.3rem; line-height:1.45; border-left:4px solid var(--accent); }
+  #synthese b { font-weight:600; }
+  .encart label { color:var(--texte); }
+  .encart select { margin-left:6px; }
+  #evolution { margin-top:10px; color:var(--doux); font-size:.95rem; }
+  #evolution b { color:var(--texte); }
+
+  /* Onglets */
+  .onglets { display:flex; gap:6px; margin:26px 0 6px; flex-wrap:wrap; }
+  .onglets button { background:transparent; border:1px solid var(--trait); border-radius:999px; padding:7px 15px; color:var(--doux); }
+  .onglets button[aria-selected="true"] { background:var(--surface2); color:var(--texte); border-color:var(--accent); }
+  .explication { color:var(--doux); font-size:.9rem; margin:8px 0 16px; max-width:52em; }
+  .vue { display:none; } .vue.active { display:block; }
+
+  /* Vue carte : une chaîne d'étapes reliées */
+  .carte { display:flex; align-items:stretch; overflow-x:auto; padding:4px 2px 10px; }
+  .noeud { display:flex; flex-direction:column; justify-content:flex-start; flex:1 0 150px; background:var(--surface); border:1px solid var(--trait); border-top:4px solid var(--gris);
+           border-radius:14px; padding:12px 14px 14px; text-align:left; color:inherit; }
+  .noeud:hover { background:var(--surface2); }
+  .noeud.actif { border-color:var(--accent); background:var(--surface2); }
+  .lien { flex:0 0 18px; align-self:center; height:2px; background:var(--trait); position:relative; }
+  .lien::after { content:""; position:absolute; right:0; top:-4px; border:5px solid transparent; border-left-color:var(--trait); border-right:0; }
+  .num { font-size:.75rem; color:var(--doux); }
+  .nom { font-weight:600; margin:4px 0 8px; display:flex; align-items:center; gap:7px; line-height:1.25; }
+  .pastille { width:10px; height:10px; border-radius:50%; background:var(--gris); flex:none; }
+  .chiffres { font-size:.84rem; color:var(--doux); line-height:1.45; }
+  .chiffres strong { color:var(--texte); font-size:1.05rem; font-weight:600; }
+  .delta { display:block; margin-top:8px; font-size:.8rem; font-weight:600; color:var(--accent-clair); }
+  .delta.change { color:var(--rouge); }
+  .decision { flex:0 0 110px; border:1px dashed var(--accent); color:var(--accent-clair); border-radius:14px; padding:14px;
+              display:flex; align-items:center; justify-content:center; font-family:var(--serif); font-size:1.15rem; }
+
+  /* Vue quadrant */
+  .quadrant { background:var(--surface); border:1px solid var(--trait); border-radius:16px; padding:12px; max-width:900px; }
+  .quadrant svg { width:100%; height:auto; display:block; }
+  .quadrant .point { cursor:pointer; }
+  .quadrant ol { color:var(--doux); }
+  .quadrant ol b { color:var(--texte); }
+
+  /* Vue matrice */
+  .matrice-wrap { overflow-x:auto; background:var(--surface); border:1px solid var(--trait); border-radius:16px; padding:8px; max-width:1040px; }
+  table { border-collapse:separate; border-spacing:4px; width:100%; min-width:640px; }
+  th { font-size:.82rem; font-weight:500; text-align:left; padding:6px 8px; color:var(--doux); }
+  td.etape { font-weight:600; padding:8px; white-space:nowrap; cursor:pointer; }
+  td.cellule { border-radius:8px; padding:10px 8px; text-align:center; font-variant-numeric:tabular-nums; }
+
+  /* Panneau détail */
+  #panneau { background:var(--surface); border:1px solid var(--trait); border-radius:16px; padding:20px 24px; max-width:1040px; margin-top:22px; color:var(--doux); }
+  #panneau h2 { font-family:var(--serif); font-weight:500; font-size:1.6rem; margin:0 0 8px; color:var(--texte); }
+  #panneau h3 { font-size:.95rem; color:var(--texte); margin:18px 0 8px; }
+  #panneau p b { color:var(--texte); }
+  .requete { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px; }
+  .requete label { font-size:.82rem; color:var(--doux); }
+  li { margin-bottom:6px; }
+  .erreur { color:var(--rouge); }
+  footer { color:var(--doux); font-size:.82rem; margin-top:22px; max-width:60em; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <p class="marque">Carte vivante · DNDi × OpenAlex × Operalta</p>
+    <h1>Quelle piste de traitement DNDi doit-elle prioriser contre la maladie de Chagas ?</h1>
+  </div>
+  <div class="barre">
+    <input id="cle" type="password" placeholder="Clé API OpenAlex" aria-label="Clé API OpenAlex">
+    <button class="action" id="actualiser">↻ Actualiser</button>
+    <button class="secondaire" id="dl-json">Télécharger JSON</button>
+    <button class="secondaire" id="dl-csv">Télécharger CSV</button>
+    <button class="secondaire" id="dl-html">Télécharger HTML autonome</button>
+  </div>
+</header>
+<p id="maj" aria-live="polite">Mis à jour : 05.11.26 11:29:20</p>
+
+<div id="synthese" class="encart" aria-live="polite">La science soutient bien <b>Besoin médical</b> et <b>Traitements actuels</b>. La décision repose sur peu de preuves pour <b>Toxicité</b> et <b>Accès / coût</b> (7 %, 8 % de couverture). La recherche s'accélère sur <b>Toxicité</b> et <b>Accès / coût</b> : à suivre de près.</div>
+
+<div class="encart">
+  <label for="comparer"><b>Ce qui a changé</b> depuis
+    <select id="comparer">
+      <option value="">— ne pas comparer —</option>
+      <option value="precedente">la dernière mise à jour enregistrée</option>
+      <option value="2026-01-01">le 1er janvier 2026</option>
+      <option value="2025-01-01" selected="">le 1er janvier 2025</option>
+      <option value="2023-01-01">le 1er janvier 2023</option>
+    </select>
+  </label>
+  <div id="evolution" aria-live="polite">Depuis le 1er janvier 2025 : <b>+311 études</b> sur l'ensemble de la décision.
+    Plus forte progression : <b>Accès / coût</b> (+27, soit +52 %).
+    Aucune étape n'a changé de couleur : le diagnostic reste stable.</div>
+</div>
+
+<div class="onglets" role="tablist">
+  <button role="tab" aria-selected="true" data-vue="v-carte">Carte de décision</button>
+  <button role="tab" aria-selected="false" data-vue="v-quadrant">Volume × dynamisme</button>
+  <button role="tab" aria-selected="false" data-vue="v-matrice">Matrice de preuves</button>
+</div>
+
+<section class="vue active" id="v-carte">
+  <p class="explication">Les étapes de la décision dans l'ordre. Couleur = couverture scientifique comparée à l'étape la mieux documentée :
+    🟢 ≥ 50 % · 🟡 20–50 % · 🔴 &lt; 20 % (angle mort) · 📈 sujet en essor (≥ 50 % d'études depuis 2020).</p>
+  <div class="carte" id="carte">
+    <button class="noeud " style="border-top-color:var(--vert)" onclick="voir(0)">
+      <div class="num">Étape 1</div>
+      <div class="nom"><span class="pastille" style="background:var(--vert)"></span>Besoin médical</div>
+      <div class="chiffres"><strong>974</strong> études<br>35 % récentes<br>couverture 100 %
+        <span class="delta ">
+          +101 études</span></div>
+    </button><span class="lien" aria-hidden="true"></span>
+    <button class="noeud " style="border-top-color:var(--vert)" onclick="voir(1)">
+      <div class="num">Étape 2</div>
+      <div class="nom"><span class="pastille" style="background:var(--vert)"></span>Traitements actuels</div>
+      <div class="chiffres"><strong>949</strong> études<br>41 % récentes<br>couverture 97 %
+        <span class="delta ">
+          +98 études</span></div>
+    </button><span class="lien" aria-hidden="true"></span>
+    <button class="noeud " style="border-top-color:var(--jaune)" onclick="voir(2)">
+      <div class="num">Étape 3</div>
+      <div class="nom"><span class="pastille" style="background:var(--jaune)"></span>Nouvelles molécules</div>
+      <div class="chiffres"><strong>225</strong> études<br>45 % récentes<br>couverture 23 %
+        <span class="delta ">
+          +41 études</span></div>
+    </button><span class="lien" aria-hidden="true"></span>
+    <button class="noeud " style="border-top-color:var(--rouge)" onclick="voir(3)">
+      <div class="num">Étape 4</div>
+      <div class="nom"><span class="pastille" style="background:var(--rouge)"></span>Toxicité 📈</div>
+      <div class="chiffres"><strong>68</strong> études<br>54 % récentes<br>couverture 7 %
+        <span class="delta ">
+          +8 études</span></div>
+    </button><span class="lien" aria-hidden="true"></span>
+    <button class="noeud " style="border-top-color:var(--jaune)" onclick="voir(4)">
+      <div class="num">Étape 5</div>
+      <div class="nom"><span class="pastille" style="background:var(--jaune)"></span>Essais cliniques</div>
+      <div class="chiffres"><strong>287</strong> études<br>41 % récentes<br>couverture 29 %
+        <span class="delta ">
+          +36 études</span></div>
+    </button><span class="lien" aria-hidden="true"></span>
+    <button class="noeud " style="border-top-color:var(--rouge)" onclick="voir(5)">
+      <div class="num">Étape 6</div>
+      <div class="nom"><span class="pastille" style="background:var(--rouge)"></span>Accès / coût 📈</div>
+      <div class="chiffres"><strong>79</strong> études<br>72 % récentes<br>couverture 8 %
+        <span class="delta ">
+          +27 études</span></div>
+    </button><span class="lien" aria-hidden="true"></span><div class="decision">Décision</div></div>
+</section>
+
+<section class="vue" id="v-quadrant">
+  <p class="explication">Chaque étape placée selon le volume d'études (horizontal) et la part publiée depuis 2020 (vertical).
+    En haut à gauche : peu étudié mais en forte croissance, là où la science bouge.</p>
+  <div class="quadrant" id="quadrant">
+  <svg viewBox="0 0 760 460" role="img" aria-label="Quadrant volume d'études et part d'études récentes par étape">
+    <rect x="70" y="20" width="660" height="218.81879194630872" fill="var(--zone-haut)"></rect>
+    <rect x="70" y="238.81879194630872" width="660" height="161.18120805369128" fill="var(--zone-bas)"></rect>
+    <text x="80" y="38" font-size="12" fill="var(--doux)" text-anchor="start">Émergent : peu d'études, forte croissance</text><text x="720" y="38" font-size="12" fill="var(--doux)" text-anchor="end">Dynamique : beaucoup d'études, en croissance</text><text x="80" y="390" font-size="12" fill="var(--doux)" text-anchor="start">Sous-couvert : peu d'études, peu de nouveautés</text><text x="720" y="390" font-size="12" fill="var(--doux)" text-anchor="end">Établi : beaucoup d'études, sujet mûr</text>
+    <line x1="400" x2="400" y1="20" y2="400" stroke="var(--trait)" stroke-dasharray="4 4"></line>
+    <line x1="70" x2="730" y1="238.81879194630872" y2="238.81879194630872" stroke="var(--trait)" stroke-dasharray="4 4"></line>
+    <rect x="70" y="20" width="660" height="380" fill="none" stroke="var(--trait)"></rect>
+    <text x="70" y="418" font-size="11" fill="var(--doux)" text-anchor="middle">0 %</text><text x="235" y="418" font-size="11" fill="var(--doux)" text-anchor="middle">25 %</text><text x="400" y="418" font-size="11" fill="var(--doux)" text-anchor="middle">50 %</text><text x="565" y="418" font-size="11" fill="var(--doux)" text-anchor="middle">75 %</text><text x="730" y="418" font-size="11" fill="var(--doux)" text-anchor="middle">100 %</text>
+    <text x="62" y="404" font-size="11" fill="var(--doux)" text-anchor="end">30 %</text><text x="62" y="323.40939597315435" font-size="11" fill="var(--doux)" text-anchor="end">40 %</text><text x="62" y="242.81879194630872" font-size="11" fill="var(--doux)" text-anchor="end">50 %</text><text x="62" y="162.2281879194631" font-size="11" fill="var(--doux)" text-anchor="end">60 %</text><text x="62" y="81.63758389261747" font-size="11" fill="var(--doux)" text-anchor="end">70 %</text>
+    <text x="400" y="446" font-size="13" fill="var(--texte)" text-anchor="middle">Volume d'études (couverture vs étape la mieux documentée)</text>
+    <text transform="translate(18 210) rotate(-90)" font-size="13" fill="var(--texte)" text-anchor="middle">Part d'études depuis 2020</text>
+    <g class="point" onclick="voir(0)" tabindex="0" role="button" aria-label="Étape 1 : Besoin médical" onkeydown="if(event.key==='Enter')voir(0)">
+        <circle cx="730" cy="359.6219560933258" r="14" fill="var(--vert)" stroke="var(--surface)" stroke-width="2"></circle>
+        <text x="730" y="364.6219560933258" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">1</text></g><g class="point" onclick="voir(1)" tabindex="0" role="button" aria-label="Étape 2 : Traitements actuels" onkeydown="if(event.key==='Enter')voir(1)">
+        <circle cx="713.0595482546202" cy="312.27598107509846" r="14" fill="var(--vert)" stroke="var(--surface)" stroke-width="2"></circle>
+        <text x="713.0595482546202" y="317.27598107509846" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">2</text></g><g class="point" onclick="voir(2)" tabindex="0" role="button" aria-label="Étape 3 : Nouvelles molécules" onkeydown="if(event.key==='Enter')voir(2)">
+        <circle cx="222.4640657084189" cy="276.42774049217" r="14" fill="var(--jaune)" stroke="var(--surface)" stroke-width="2"></circle>
+        <text x="222.4640657084189" y="281.42774049217" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">3</text></g><g class="point" onclick="voir(3)" tabindex="0" role="button" aria-label="Étape 4 : Toxicité" onkeydown="if(event.key==='Enter')voir(3)">
+        <circle cx="116.07802874743325" cy="203.26411369917096" r="14" fill="var(--rouge)" stroke="var(--surface)" stroke-width="2"></circle>
+        <text x="116.07802874743325" y="208.26411369917096" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">4</text></g><g class="point" onclick="voir(4)" tabindex="0" role="button" aria-label="Étape 5 : Essais cliniques" onkeydown="if(event.key==='Enter')voir(4)">
+        <circle cx="264.476386036961" cy="307.61564904239646" r="14" fill="var(--jaune)" stroke="var(--surface)" stroke-width="2"></circle>
+        <text x="264.476386036961" y="312.61564904239646" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">5</text></g><g class="point" onclick="voir(5)" tabindex="0" role="button" aria-label="Étape 6 : Accès / coût" onkeydown="if(event.key==='Enter')voir(5)">
+        <circle cx="123.53182751540041" cy="60.295302013422855" r="14" fill="var(--rouge)" stroke="var(--surface)" stroke-width="2"></circle>
+        <text x="123.53182751540041" y="65.29530201342286" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">6</text></g>
+  </svg><ol style="display:flex;flex-wrap:wrap;gap:6px 20px;list-style:none;padding:8px 8px 4px;margin:0;font-size:.9rem">
+    <li style="cursor:pointer" onclick="voir(0)"><b>1</b> Besoin médical</li><li style="cursor:pointer" onclick="voir(1)"><b>2</b> Traitements actuels</li><li style="cursor:pointer" onclick="voir(2)"><b>3</b> Nouvelles molécules</li><li style="cursor:pointer" onclick="voir(3)"><b>4</b> Toxicité 📈</li><li style="cursor:pointer" onclick="voir(4)"><b>5</b> Essais cliniques</li><li style="cursor:pointer" onclick="voir(5)"><b>6</b> Accès / coût 📈</li></ol></div>
+</section>
+
+<section class="vue" id="v-matrice">
+  <p class="explication">La matrice Operalta en couleur : plus la case est vive, plus la preuve est forte sur ce critère
+    (comparé aux autres étapes de la même colonne).</p>
+  <div class="matrice-wrap" id="matrice"><table>
+    <thead><tr><th>Étape</th><th>Volume d'études</th><th>Part récente</th><th>En accès libre</th><th>Avec un auteur en Suisse</th></tr></thead>
+    <tbody><tr>
+      <td class="etape" onclick="voir(0)"><span class="pastille" style="display:inline-block;margin-right:6px;background:var(--vert)"></span>Besoin médical</td>
+      <td class="cellule" style="background:hsl(265 75% 59%);color:#fff">974</td><td class="cellule" style="background:hsl(265 49.26150077452358% 38.40920061961886%);color:#fff">35 %</td><td class="cellule" style="background:hsl(265 63.77247837720117% 50.017982701760936%);color:#fff">65 %</td><td class="cellule" style="background:hsl(265 68.47826086956522% 53.78260869565217%);color:#fff">40</td></tr><tr>
+      <td class="etape" onclick="voir(1)"><span class="pastille" style="display:inline-block;margin-right:6px;background:var(--vert)"></span>Traitements actuels</td>
+      <td class="cellule" style="background:hsl(265 73.71663244353184% 57.97330595482546%);color:#fff">949</td><td class="cellule" style="background:hsl(265 53.3326862995212% 41.666149039616954%);color:#fff">41 %</td><td class="cellule" style="background:hsl(265 64.16323402624772% 50.33058722099818%);color:#fff">65 %</td><td class="cellule" style="background:hsl(265 75% 59%);color:#fff">46</td></tr><tr>
+      <td class="etape" onclick="voir(2)"><span class="pastille" style="display:inline-block;margin-right:6px;background:var(--jaune)"></span>Nouvelles molécules</td>
+      <td class="cellule" style="background:hsl(265 36.550308008213555% 28.24024640657084%);color:#fff">225</td><td class="cellule" style="background:hsl(265 56.41520467836257% 44.13216374269006%);color:#fff">45 %</td><td class="cellule" style="background:hsl(265 66.22895622895624% 51.98316498316498%);color:#fff">69 %</td><td class="cellule" style="background:hsl(265 45.65217391304348% 35.52173913043478%);color:#fff">19</td></tr><tr>
+      <td class="etape" onclick="voir(3)"><span class="pastille" style="display:inline-block;margin-right:6px;background:var(--rouge)"></span>Toxicité</td>
+      <td class="cellule" style="background:hsl(265 28.49075975359343% 21.79260780287474%);color:#fff">68</td><td class="cellule" style="background:hsl(265 62.70639834881321% 49.165118679050565%);color:#fff">54 %</td><td class="cellule" style="background:hsl(265 70.76648841354724% 55.613190730837786%);color:#fff">76 %</td><td class="cellule" style="background:hsl(265 29.347826086956523% 22.47826086956522%);color:#fff">4</td></tr><tr>
+      <td class="etape" onclick="voir(4)"><span class="pastille" style="display:inline-block;margin-right:6px;background:var(--jaune)"></span>Essais cliniques</td>
+      <td class="cellule" style="background:hsl(265 39.73305954825462% 30.786447638603697%);color:#fff">287</td><td class="cellule" style="background:hsl(265 53.733418913136504% 41.9867351305092%);color:#fff">41 %</td><td class="cellule" style="background:hsl(265 66.28919860627178% 52.03135888501742%);color:#fff">69 %</td><td class="cellule" style="background:hsl(265 64.13043478260869% 50.30434782608695%);color:#fff">36</td></tr><tr>
+      <td class="etape" onclick="voir(5)"><span class="pastille" style="display:inline-block;margin-right:6px;background:var(--rouge)"></span>Accès / coût</td>
+      <td class="cellule" style="background:hsl(265 29.055441478439427% 22.24435318275154%);color:#fff">79</td><td class="cellule" style="background:hsl(265 75% 59%);color:#fff">72 %</td><td class="cellule" style="background:hsl(265 75% 59%);color:#fff">84 %</td><td class="cellule" style="background:hsl(265 38.04347826086956% 29.434782608695652%);color:#fff">12</td></tr></tbody></table></div>
+</section>
+
+<div id="panneau">Clique sur une étape pour voir ce que dit la science.</div>
+
+<footer>Données : <a href="https://openalex.org" target="_blank" rel="noopener">OpenAlex</a> (licence CC0), interrogées en direct et gardées en cache 6 h dans ce navigateur.
+  Chaque chiffre renvoie à la requête OpenAlex qui le produit. Les couleurs mesurent le volume et la dynamique des publications, pas leur qualité :
+  un humain valide les articles, ajuste les requêtes et reste décideur.</footer>
+
+<script>
+const API = "https://api.openalex.org/works";
+const ANNEE_RECENTE = 2020, SEUIL_VERT = 0.5, SEUIL_JAUNE = 0.2, SEUIL_TENDANCE = 0.5;
+const COULEURS = { vert: "var(--vert)", jaune: "var(--jaune)", rouge: "var(--rouge)" };
+
+const ETAPES = [
+  // requete : mots cherchés dans le titre ou le résumé
+  // titre   : mot obligatoire dans le TITRE, pour écarter les articles qui ne citent la maladie qu'en passant
+  { id: "besoin",      nom: "Besoin médical",      requete: "Chagas prevalence",                titre: "Chagas",       suivantes: ["traitements"] },
+  { id: "traitements", nom: "Traitements actuels", requete: "Chagas benznidazole",              titre: "Chagas",       suivantes: ["molecules"] },
+  { id: "molecules",   nom: "Nouvelles molécules", requete: "Trypanosoma cruzi drug discovery", titre: "cruzi",        suivantes: ["toxicite"] },
+  { id: "toxicite",    nom: "Toxicité",            requete: "benznidazole adverse effects",     titre: "benznidazole", suivantes: ["essais"] },
+  { id: "essais",      nom: "Essais cliniques",    requete: "Chagas clinical trial",            titre: "Chagas",       suivantes: ["acces"] },
+  { id: "acces",       nom: "Accès / coût",        requete: "Chagas treatment gap",             titre: "Chagas",       suivantes: ["decision"] },
+];
+let actif = null;
+let derniereMaj = null;
+// Données figées : remplies automatiquement par « Télécharger HTML autonome »,
+// pour que la page fonctionne sans réseau (ex. une fois importée dans Operalta).
+const DONNEES_FIGEES = {"maj":"2026-11-05T10:29:20.615Z","etapes":[{"id":"besoin","nom":"Besoin médical","requete":"Chagas prevalence","titre":"Chagas","suivantes":["traitements"],"recent":341,"acces_libre":631,"suisse":40,"total":974,"part_recente":0.35010266940451745,"part_acces_libre":0.6478439425051334,"en_essor":false,"articles":[{"titre":"Chagas disease","annee":2010,"citations":2128,"lien":"https://doi.org/10.1016/s0140-6736(10)60061-x"},{"titre":"Clinical and epidemiological aspects of Chagas disease","annee":2001,"citations":921,"lien":"https://doi.org/10.1016/s1473-3099(01)00065-2"},{"titre":"Trypanosoma cruzi and Chagas' Disease in the United States","annee":2011,"citations":677,"lien":"https://doi.org/10.1128/cmr.00005-11"}],"erreur":null,"couverture":1,"couleur":"vert","ref_total":873,"ref_couleur":"vert"},{"id":"traitements","nom":"Traitements actuels","requete":"Chagas benznidazole","titre":"Chagas","suivantes":["molecules"],"recent":388,"acces_libre":621,"suisse":46,"total":949,"part_recente":0.4088514225500527,"part_acces_libre":0.6543730242360379,"en_essor":false,"articles":[{"titre":"Chagas disease","annee":2010,"citations":2128,"lien":"https://doi.org/10.1016/s0140-6736(10)60061-x"},{"titre":"Randomized Trial of Benznidazole for Chronic Chagas’ Cardiomyopathy","annee":2015,"citations":1014,"lien":"https://doi.org/10.1056/nejmoa1507574"},{"titre":"A Critical Review on Chagas Disease Chemotherapy","annee":2002,"citations":1003,"lien":"https://doi.org/10.1590/s0074-02762002000100001"}],"erreur":null,"couverture":0.9743326488706365,"couleur":"vert","ref_total":851,"ref_couleur":"vert"},{"id":"molecules","nom":"Nouvelles molécules","requete":"Trypanosoma cruzi drug discovery","titre":"cruzi","suivantes":["toxicite"],"recent":102,"acces_libre":155,"suisse":19,"total":225,"part_recente":0.4533333333333333,"part_acces_libre":0.6888888888888889,"en_essor":false,"articles":[{"titre":"Crystal structure of Trypanosoma cruzi trypanothione reductase in complex with trypanothione, and the structure-based discovery of new natural product inhibitors","annee":1999,"citations":207,"lien":"https://doi.org/10.1016/s0969-2126(99)80011-2"},{"titre":"Nitroheterocyclic compounds are more efficacious than CYP51 inhibitors against Trypanosoma cruzi: implications for Chagas disease drug discovery and development","annee":2014,"citations":206,"lien":"https://doi.org/10.1038/srep04703"},{"titre":"In Vitro and In Vivo High-Throughput Assays for the Testing of Anti-Trypanosoma cruzi Compounds","annee":2010,"citations":157,"lien":"https://doi.org/10.1371/journal.pntd.0000740"}],"erreur":null,"couverture":0.23100616016427106,"couleur":"jaune","ref_total":184,"ref_couleur":"jaune"},{"id":"toxicite","nom":"Toxicité","requete":"benznidazole adverse effects","titre":"benznidazole","suivantes":["essais"],"recent":37,"acces_libre":52,"suisse":4,"total":68,"part_recente":0.5441176470588235,"part_acces_libre":0.7647058823529411,"en_essor":true,"articles":[{"titre":"Benznidazole and Posaconazole in Eliminating Parasites in Asymptomatic T. Cruzi Carriers","annee":2017,"citations":310,"lien":"https://doi.org/10.1016/j.jacc.2016.12.023"},{"titre":"Clinical and pharmacological profile of benznidazole for treatment of Chagas disease","annee":2018,"citations":151,"lien":"https://doi.org/10.1080/17512433.2018.1509704"},{"titre":"Adverse Events After the Use of Benznidazole in Infants and Children With Chagas Disease","annee":2010,"citations":146,"lien":"https://doi.org/10.1542/peds.2010-1172"}],"erreur":null,"couverture":0.06981519507186858,"couleur":"rouge","ref_total":60,"ref_couleur":"rouge"},{"id":"essais","nom":"Essais cliniques","requete":"Chagas clinical trial","titre":"Chagas","suivantes":["acces"],"recent":119,"acces_libre":198,"suisse":36,"total":287,"part_recente":0.4146341463414634,"part_acces_libre":0.6898954703832753,"en_essor":false,"articles":[{"titre":"Randomized Trial of Benznidazole for Chronic Chagas’ Cardiomyopathy","annee":2015,"citations":1014,"lien":"https://doi.org/10.1056/nejmoa1507574"},{"titre":"Randomized Trial of Posaconazole and Benznidazole for Chronic Chagas' Disease","annee":2014,"citations":601,"lien":"https://doi.org/10.1056/nejmoa1313122"},{"titre":"Long-Term Cardiac Outcomes of Treating Chronic Chagas Disease with Benznidazole versus No Treatment","annee":2006,"citations":599,"lien":"https://doi.org/10.7326/0003-4819-144-10-200605160-00006"}],"erreur":null,"couverture":0.2946611909650924,"couleur":"jaune","ref_total":251,"ref_couleur":"jaune"},{"id":"acces","nom":"Accès / coût","requete":"Chagas treatment gap","titre":"Chagas","suivantes":["decision"],"recent":57,"acces_libre":66,"suisse":12,"total":79,"part_recente":0.7215189873417721,"part_acces_libre":0.8354430379746836,"en_essor":true,"articles":[{"titre":"Evaluation and Treatment of Chagas Disease in the United States","annee":2007,"citations":768,"lien":"https://doi.org/10.1001/jama.298.18.2171"},{"titre":"Perspectives on Trypanosoma cruzi–Induced Heart Disease (Chagas Disease)","annee":2009,"citations":163,"lien":"https://doi.org/10.1016/j.pcad.2009.02.001"},{"titre":"Strategies to enhance access to diagnosis and treatment for Chagas disease patients in Latin America","annee":2019,"citations":128,"lien":"https://doi.org/10.1080/14787210.2019.1577731"}],"erreur":null,"couverture":0.0811088295687885,"couleur":"rouge","ref_total":52,"ref_couleur":"rouge"}]};
+
+const esc = s => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
+const pct = v => Math.round((v || 0) * 100) + " %";
+const pause = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- Clé API (gardée dans ce navigateur uniquement) ---------- */
+const champCle = document.getElementById("cle");
+try { champCle.value = localStorage.getItem("openalex_cle") || ""; } catch (_) {}
+champCle.addEventListener("change", () => {
+  try { localStorage.setItem("openalex_cle", champCle.value.trim()); } catch (_) {}
+  toutCharger();
+});
+
+/* ---------- Appels OpenAlex ---------- */
+async function appel(params) {
+  const cle = champCle.value.trim();
+  if (cle) params = { ...params, api_key: cle };
+  for (let essai = 0; essai < 4; essai++) {
+    const r = await fetch(API + "?" + new URLSearchParams(params));
+    if (r.ok) return r.json();
+    if (r.status === 429 && essai < 3) { await pause(1000 * 2 ** essai); continue; }
+    if (r.status === 429) throw new Error("Limite OpenAlex atteinte : saisis ta clé API, puis Actualiser.");
+    if (r.status === 401 || r.status === 403) throw new Error("Clé API refusée : vérifie-la en haut de la page.");
+    throw new Error("OpenAlex a répondu " + r.status);
+  }
+}
+const compter = async filtre => (await appel({ filter: filtre, per_page: 1, select: "id" })).meta.count;
+
+const filtreDe = e => "title_and_abstract.search:" + e.requete + (e.titre ? ",title.search:" + e.titre : "");
+// Provenance : lien public vers la requête OpenAlex qui produit un chiffre (sans la clé API)
+const lienOA = filtre => API + "?" + new URLSearchParams({ filter: filtre, per_page: 5, select: "title,publication_year,doi" });
+
+async function analyser(e) {
+  const f = filtreDe(e);
+  const tous = await appel({ filter: f, sort: "cited_by_count:desc", per_page: 3, select: "title,publication_year,cited_by_count,doi,id" });
+  await pause(120);
+  e.recent = await compter(f + ",publication_year:>" + (ANNEE_RECENTE - 1));
+  await pause(120);
+  e.acces_libre = await compter(f + ",open_access.is_oa:true");
+  await pause(120);
+  e.suisse = await compter(f + ",authorships.institutions.country_code:CH");
+
+  e.total = tous.meta.count;
+  e.part_recente = e.total ? e.recent / e.total : 0;
+  e.part_acces_libre = e.total ? e.acces_libre / e.total : 0;
+  e.en_essor = e.part_recente >= SEUIL_TENDANCE;
+  e.articles = tous.results.map(w => ({ titre: w.title || "(sans titre)", annee: w.publication_year, citations: w.cited_by_count, lien: w.doi || w.id }));
+  e.erreur = null;
+}
+
+function colorier() {
+  const max = Math.max(1, ...ETAPES.map(e => e.total || 0));
+  for (const e of ETAPES) {
+    e.couverture = (e.total || 0) / max;
+    e.couleur = e.erreur ? null : e.couverture >= SEUIL_VERT ? "vert" : e.couverture >= SEUIL_JAUNE ? "jaune" : "rouge";
+  }
+}
+
+/* ---------- Synthèse en une phrase (lisible en moins d'une minute) ---------- */
+function dessinerSynthese() {
+  const ok = ETAPES.filter(e => e.total != null && !e.erreur);
+  if (ok.length < ETAPES.length) { document.getElementById("synthese").innerHTML = ""; return; }
+  const noms = l => {
+    const n = l.map(e => `<b>${esc(e.nom)}</b>`);
+    return n.length > 1 ? n.slice(0, -1).join(", ") + " et " + n.at(-1) : n[0] || "aucune étape";
+  };
+  const solides = ok.filter(e => e.couleur === "vert"), morts = ok.filter(e => e.couleur === "rouge");
+  const essor = ok.filter(e => e.en_essor);
+  document.getElementById("synthese").innerHTML =
+    `La science soutient bien ${noms(solides)}. ` +
+    `La décision repose sur peu de preuves pour ${noms(morts)}` +
+    (morts.length ? ` (${morts.map(e => pct(e.couverture)).join(", ")} de couverture)` : "") + ". " +
+    (essor.length ? `La recherche s'accélère sur ${noms(essor)} : à suivre de près.` : "");
+}
+
+/* ---------- Comparaison dans le temps (actualisabilité) ---------- */
+const selectComparer = document.getElementById("comparer");
+let referenceLabel = "";
+
+function lireCache(cle) { try { return JSON.parse(localStorage.getItem(cle)); } catch (_) { return null; } }
+function ecrireCache(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (_) {} }
+const instantane = () => ({
+  maj: (derniereMaj || new Date()).toISOString(),
+  etapes: ETAPES.map(e => ({ id: e.id, requete: e.requete, titre: e.titre, total: e.total, recent: e.recent,
+    part_recente: e.part_recente, acces_libre: e.acces_libre, part_acces_libre: e.part_acces_libre, suisse: e.suisse,
+    en_essor: e.en_essor, articles: e.articles, couverture: e.couverture, couleur: e.couleur })),
+});
+const memesRequetes = snap => snap && snap.etapes.length === ETAPES.length &&
+  snap.etapes.every((s, i) => s.requete === ETAPES[i].requete && (s.titre || "") === (ETAPES[i].titre || ""));
+const dateFr = d => new Date(d).toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "short" });
+
+async function chargerReference() {
+  const choix = selectComparer.value;
+  ETAPES.forEach(e => { e.ref_total = null; e.ref_couleur = null; });
+  referenceLabel = "";
+  if (!choix || ETAPES.some(e => e.total == null || e.erreur)) { dessinerTout(); dessinerEvolution(); return; }
+
+  if (choix === "precedente") {
+    const prec = lireCache("dndi_precedent");
+    if (!memesRequetes(prec)) {
+      document.getElementById("evolution").textContent =
+        "Pas encore de mise à jour précédente avec ces requêtes sur ce navigateur : clique Actualiser plus tard pour voir la différence.";
+      dessinerTout(); return;
+    }
+    prec.etapes.forEach((s, i) => { ETAPES[i].ref_total = s.total; ETAPES[i].ref_couleur = s.couleur; });
+    referenceLabel = "la mise à jour du " + dateFr(prec.maj);
+  } else {
+    document.getElementById("evolution").textContent = "Calcul de la situation au " + new Date(choix).toLocaleDateString("fr-CH") + "…";
+    const veille = new Date(new Date(choix) - 864e5).toISOString().slice(0, 10);
+    try {
+      for (const e of ETAPES) { e.ref_total = await compter(filtreDe(e) + ",to_publication_date:" + veille); await pause(120); }
+    } catch (err) { document.getElementById("evolution").textContent = "⚠ " + err.message; return; }
+    const max = Math.max(1, ...ETAPES.map(e => e.ref_total));
+    ETAPES.forEach(e => { const c = e.ref_total / max; e.ref_couleur = c >= SEUIL_VERT ? "vert" : c >= SEUIL_JAUNE ? "jaune" : "rouge"; });
+    referenceLabel = "le " + new Date(choix).toLocaleDateString("fr-CH", { dateStyle: "long" }).replace(/^1 /, "1er ");
+  }
+  dessinerTout(); dessinerEvolution();
+}
+
+function dessinerEvolution() {
+  const zone = document.getElementById("evolution");
+  const avec = ETAPES.filter(e => e.ref_total != null);
+  if (!avec.length) { if (!selectComparer.value) zone.textContent = ""; return; }
+  const ajout = avec.reduce((s, e) => s + (e.total - e.ref_total), 0);
+  const croissance = e => e.ref_total ? (e.total - e.ref_total) / e.ref_total : 0;
+  const top = [...avec].sort((a, b) => croissance(b) - croissance(a))[0];
+  const changements = avec.filter(e => e.ref_couleur !== e.couleur);
+  zone.innerHTML = `Depuis ${esc(referenceLabel)} : <b>+${ajout} études</b> sur l'ensemble de la décision.
+    Plus forte progression : <b>${esc(top.nom)}</b> (+${top.total - top.ref_total}, soit +${Math.round(croissance(top) * 100)} %).
+    ${changements.length
+      ? "Changement de couleur : " + changements.map(e => `<b>${esc(e.nom)}</b> (${e.ref_couleur} → ${e.couleur})`).join(", ") + "."
+      : "Aucune étape n'a changé de couleur : le diagnostic reste stable."}`;
+}
+selectComparer.addEventListener("change", chargerReference);
+
+/* ---------- Vue 1 : carte ---------- */
+function dessinerCarte() {
+  document.getElementById("carte").innerHTML = ETAPES.map((e, i) => `
+    <button class="noeud ${i === actif ? "actif" : ""}" style="border-top-color:${COULEURS[e.couleur] || "var(--gris)"}" onclick="voir(${i})">
+      <div class="num">Étape ${i + 1}</div>
+      <div class="nom"><span class="pastille" style="background:${COULEURS[e.couleur] || "var(--gris)"}"></span>${esc(e.nom)}${e.en_essor ? " 📈" : ""}</div>
+      <div class="chiffres">${e.erreur ? '<span class="erreur">Erreur</span>' : e.total == null ? "…" :
+        `<strong>${e.total}</strong> études<br>${pct(e.part_recente)} récentes<br>couverture ${pct(e.couverture)}`}
+        ${e.ref_total != null && !e.erreur ? `<span class="delta ${e.ref_couleur !== e.couleur ? "change" : ""}">
+          +${e.total - e.ref_total} études${e.ref_couleur !== e.couleur ? ` · était ${e.ref_couleur}` : ""}</span>` : ""}</div>
+    </button>`).join('<span class="lien" aria-hidden="true"></span>') + `<span class="lien" aria-hidden="true"></span><div class="decision">Décision</div>`;
+}
+
+/* ---------- Vue 2 : quadrant volume × dynamisme ---------- */
+function dessinerQuadrant() {
+  const W = 760, H = 460, m = { g: 70, d: 30, h: 20, b: 60 };
+  const iw = W - m.g - m.d, ih = H - m.h - m.b;
+  const pts = ETAPES.filter(e => e.total != null && !e.erreur);
+  // Axe vertical resserré autour des données (le seuil d'essor reste toujours visible)
+  const parts = pts.map(e => e.part_recente);
+  const yMin = Math.max(0, Math.min(SEUIL_TENDANCE - .15, ...parts) - .05);
+  const yMax = Math.min(1, Math.max(SEUIL_TENDANCE + .15, ...parts) + .05);
+  const x = v => m.g + v * iw, y = v => m.h + (1 - (v - yMin) / (yMax - yMin)) * ih;
+  const ys = y(SEUIL_TENDANCE), xs = x(.5);
+  const ticksY = [];
+  for (let t = Math.ceil(yMin * 10) / 10; t <= yMax + 1e-9; t += .1) ticksY.push(+t.toFixed(1));
+  const zones = [
+    { x: m.g + 10,      y: m.h + 18,      a: "start", t: "Émergent : peu d'études, forte croissance" },
+    { x: m.g + iw - 10, y: m.h + 18,      a: "end",   t: "Dynamique : beaucoup d'études, en croissance" },
+    { x: m.g + 10,      y: m.h + ih - 10, a: "start", t: "Sous-couvert : peu d'études, peu de nouveautés" },
+    { x: m.g + iw - 10, y: m.h + ih - 10, a: "end",   t: "Établi : beaucoup d'études, sujet mûr" },
+  ];
+  const svg = `
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Quadrant volume d'études et part d'études récentes par étape">
+    <rect x="${m.g}" y="${m.h}" width="${iw}" height="${ys - m.h}" fill="var(--zone-haut)"/>
+    <rect x="${m.g}" y="${ys}" width="${iw}" height="${m.h + ih - ys}" fill="var(--zone-bas)"/>
+    ${zones.map(z => `<text x="${z.x}" y="${z.y}" font-size="12" fill="var(--doux)" text-anchor="${z.a}">${esc(z.t)}</text>`).join("")}
+    <line x1="${xs}" x2="${xs}" y1="${m.h}" y2="${m.h + ih}" stroke="var(--trait)" stroke-dasharray="4 4"/>
+    <line x1="${m.g}" x2="${m.g + iw}" y1="${ys}" y2="${ys}" stroke="var(--trait)" stroke-dasharray="4 4"/>
+    <rect x="${m.g}" y="${m.h}" width="${iw}" height="${ih}" fill="none" stroke="var(--trait)"/>
+    ${[0, .25, .5, .75, 1].map(t => `<text x="${x(t)}" y="${m.h + ih + 18}" font-size="11" fill="var(--doux)" text-anchor="middle">${t * 100} %</text>`).join("")}
+    ${ticksY.map(t => `<text x="${m.g - 8}" y="${y(t) + 4}" font-size="11" fill="var(--doux)" text-anchor="end">${Math.round(t * 100)} %</text>`).join("")}
+    <text x="${m.g + iw / 2}" y="${H - 14}" font-size="13" fill="var(--texte)" text-anchor="middle">Volume d'études (couverture vs étape la mieux documentée)</text>
+    <text transform="translate(18 ${m.h + ih / 2}) rotate(-90)" font-size="13" fill="var(--texte)" text-anchor="middle">Part d'études depuis ${ANNEE_RECENTE}</text>
+    ${pts.map(e => {
+      const i = ETAPES.indexOf(e), cx = x(e.couverture), cy = y(e.part_recente);
+      return `<g class="point" onclick="voir(${i})" tabindex="0" role="button" aria-label="Étape ${i + 1} : ${esc(e.nom)}"
+               onkeydown="if(event.key==='Enter')voir(${i})">
+        <circle cx="${cx}" cy="${cy}" r="14" fill="${COULEURS[e.couleur]}" stroke="${i === actif ? "var(--accent-clair)" : "var(--surface)"}" stroke-width="${i === actif ? 3 : 2}"/>
+        <text x="${cx}" y="${cy + 5}" font-size="13" font-weight="700" fill="#151319" text-anchor="middle">${i + 1}</text></g>`;
+    }).join("")}
+  </svg>`;
+  const legende = `<ol style="display:flex;flex-wrap:wrap;gap:6px 20px;list-style:none;padding:8px 8px 4px;margin:0;font-size:.9rem">
+    ${ETAPES.map((e, i) => `<li style="cursor:pointer" onclick="voir(${i})"><b>${i + 1}</b> ${esc(e.nom)}${e.en_essor ? " 📈" : ""}</li>`).join("")}</ol>`;
+  document.getElementById("quadrant").innerHTML = svg + legende;
+}
+
+/* ---------- Vue 3 : matrice de preuves (heatmap) ---------- */
+const CRITERES = [
+  { cle: "couverture",       titre: "Volume d'études",        format: e => `${e.total}` },
+  { cle: "part_recente",     titre: "Part récente",           format: e => pct(e.part_recente) },
+  { cle: "part_acces_libre", titre: "En accès libre",         format: e => pct(e.part_acces_libre) },
+  { cle: "suisse",           titre: "Avec un auteur en Suisse", format: e => `${e.suisse}` },
+];
+function teinte(v) {
+  return { fond: `hsl(265 ${25 + v * 50}% ${19 + v * 40}%)`, texte: "#fff" };
+}
+function dessinerMatrice() {
+  const ok = ETAPES.filter(e => e.total != null && !e.erreur);
+  const max = Object.fromEntries(CRITERES.map(c => [c.cle, Math.max(1e-9, ...ok.map(e => e[c.cle] || 0))]));
+  document.getElementById("matrice").innerHTML = `<table>
+    <thead><tr><th>Étape</th>${CRITERES.map(c => `<th>${esc(c.titre)}</th>`).join("")}</tr></thead>
+    <tbody>${ETAPES.map((e, i) => `<tr>
+      <td class="etape" onclick="voir(${i})"><span class="pastille" style="display:inline-block;margin-right:6px;background:${COULEURS[e.couleur] || "var(--gris)"}"></span>${esc(e.nom)}</td>
+      ${CRITERES.map(c => {
+        if (e.total == null || e.erreur) return `<td class="cellule">…</td>`;
+        const t = teinte((e[c.cle] || 0) / max[c.cle]);
+        return `<td class="cellule" style="background:${t.fond};color:${t.texte}">${c.format(e)}</td>`;
+      }).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+/* ---------- Panneau détail ---------- */
+function voir(i) {
+  actif = i; dessinerTout(false);
+  const e = ETAPES[i];
+  const arts = (e.articles || []).map(a =>
+    `<li><a href="${esc(a.lien)}" target="_blank" rel="noopener">${esc(a.titre)}</a> (${a.annee}, ${a.citations} citations)</li>`).join("");
+  document.getElementById("panneau").innerHTML = `
+    <h2>${esc(e.nom)}</h2>
+    ${e.erreur ? `<p class="erreur">${esc(e.erreur)}</p>` : `
+    <p><b>${e.total}</b> études, dont <b>${e.recent}</b> depuis ${ANNEE_RECENTE} (${pct(e.part_recente)})${e.en_essor ? " : <b>sujet en essor 📈</b>" : ""}.
+       Couverture : ${pct(e.couverture)} de l'étape la mieux documentée.
+       ${pct(e.part_acces_libre)} en accès libre, ${e.suisse} avec un auteur en Suisse.</p>
+    <p style="font-size:.88rem">Vérifier sur OpenAlex :
+      <a href="${esc(lienOA(filtreDe(e)))}" target="_blank" rel="noopener">toutes les études</a> ·
+      <a href="${esc(lienOA(filtreDe(e) + ",publication_year:>" + (ANNEE_RECENTE - 1)))}" target="_blank" rel="noopener">depuis ${ANNEE_RECENTE}</a> ·
+      <a href="${esc(lienOA(filtreDe(e) + ",open_access.is_oa:true"))}" target="_blank" rel="noopener">accès libre</a> ·
+      <a href="${esc(lienOA(filtreDe(e) + ",authorships.institutions.country_code:CH"))}" target="_blank" rel="noopener">auteurs en Suisse</a></p>`}
+    <div class="requete">
+      <label style="flex:2;min-width:220px">Mots cherchés (titre ou résumé)
+        <input id="req" value="${esc(e.requete)}" style="width:100%;margin-top:4px"></label>
+      <label style="flex:1;min-width:150px">Mot exigé dans le titre
+        <input id="req-titre" value="${esc(e.titre || "")}" style="width:100%;margin-top:4px"></label>
+      <button class="secondaire" style="align-self:flex-end" onclick="changerRequete(${i})">Relancer cette étape</button>
+    </div>
+    <h3>Articles les plus cités</h3><ul>${arts || "<li>Aucun article.</li>"}</ul>`;
+}
+
+async function changerRequete(i) {
+  ETAPES[i].requete = document.getElementById("req").value.trim() || ETAPES[i].requete;
+  ETAPES[i].titre = document.getElementById("req-titre").value.trim();
+  await toutCharger();
+  voir(i);
+}
+
+function dessinerTout() { dessinerSynthese(); dessinerCarte(); dessinerQuadrant(); dessinerMatrice(); }
+
+async function toutCharger() {
+  const bouton = document.getElementById("actualiser");
+  bouton.disabled = true;
+  for (const [i, e] of ETAPES.entries()) {
+    document.getElementById("maj").textContent = `Interrogation d'OpenAlex… étape ${i + 1}/${ETAPES.length}`;
+    try { await analyser(e); } catch (err) { e.erreur = err.message; e.total = 0; }
+    await pause(120);
+  }
+  colorier(); dessinerTout();
+  if (actif !== null) voir(actif);
+  derniereMaj = new Date();
+  const erreur = ETAPES.find(e => e.erreur);
+  document.getElementById("maj").textContent = erreur ? "⚠ " + erreur.erreur
+    : "Mis à jour : " + derniereMaj.toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "medium" });
+  bouton.disabled = false;
+  if (!erreur) {
+    // Cache local : la mise à jour précédente devient la référence de comparaison
+    const ancien = lireCache("dndi_cache");
+    if (ancien) ecrireCache("dndi_precedent", ancien);
+    ecrireCache("dndi_cache", instantane());
+  }
+  await chargerReference();
+}
+
+/* ---------- Téléchargements (pour Operalta) ---------- */
+function telecharger(nom, contenu, type) {
+  const url = URL.createObjectURL(new Blob([contenu], { type }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: nom });
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+function exportDonnees() {
+  return ETAPES.map(e => ({
+    id: e.id, nom: e.nom, requete: e.requete, mot_titre: e.titre || "", suivantes: e.suivantes,
+    total: e.total, recent: e.recent, part_recente: +(e.part_recente || 0).toFixed(2),
+    en_essor: !!e.en_essor, couverture: +(e.couverture || 0).toFixed(2), couleur: e.couleur,
+    acces_libre: e.acces_libre, part_acces_libre: +(e.part_acces_libre || 0).toFixed(2), suisse: e.suisse,
+    articles: e.articles || [],
+  }));
+}
+document.getElementById("dl-json").onclick = () =>
+  telecharger("resultats.json", JSON.stringify(exportDonnees(), null, 2), "application/json");
+document.getElementById("dl-csv").onclick = () => {
+  const cell = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lignes = [["Étape", "Requête OpenAlex", "Mot obligatoire dans le titre", "Nb études", "Études depuis 2020", "Part récente (%)",
+    "Couverture vs meilleure étape (%)", "Couleur", "En essor", "Accès libre (%)", "Avec auteur en Suisse",
+    "Article clé 1", "Article clé 2", "Article clé 3"]];
+  for (const e of exportDonnees()) {
+    const arts = e.articles.map(a => `${a.titre} (${a.annee}, ${a.citations} citations) ${a.lien}`);
+    lignes.push([e.nom, e.requete, e.mot_titre, e.total, e.recent, Math.round(e.part_recente * 100), Math.round(e.couverture * 100),
+      e.couleur, e.en_essor ? "oui" : "non", Math.round(e.part_acces_libre * 100), e.suisse, arts[0], arts[1], arts[2]]);
+  }
+  telecharger("matrice_operalta.csv", "﻿" + lignes.map(l => l.map(cell).join(";")).join("\r\n"), "text/csv");
+};
+
+/* ---------- Onglets ---------- */
+document.querySelectorAll(".onglets button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".onglets button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll(".vue").forEach(v => v.classList.toggle("active", v.id === b.dataset.vue));
+});
+
+document.getElementById("dl-html").onclick = () => {
+  if (ETAPES.some(e => e.total == null || e.erreur)) {
+    alert("Attends que toutes les étapes soient chargées sans erreur avant de télécharger.");
+    return;
+  }
+  const figees = { maj: (derniereMaj || new Date()).toISOString(), etapes: ETAPES };
+  const source = "<!doctype html>\n" + document.documentElement.outerHTML
+    .replace("const DONNEES_FIGEES = null;", "const DONNEES_FIGEES = " + JSON.stringify(figees).replace(/</g, "\\u003c") + ";");
+  telecharger("carte_dndi_autonome.html", source, "text/html");
+};
+
+document.getElementById("actualiser").onclick = toutCharger;
+if (DONNEES_FIGEES) {
+  // Version autonome : on affiche les données intégrées, sans appeler OpenAlex.
+  DONNEES_FIGEES.etapes.forEach((d, i) => Object.assign(ETAPES[i], d));
+  derniereMaj = new Date(DONNEES_FIGEES.maj);
+  colorier(); dessinerTout();
+  document.getElementById("maj").textContent = "Données OpenAlex du "
+    + derniereMaj.toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "short" }) + " (Actualiser pour les mettre à jour en direct)";
+  chargerReference();
+} else {
+  // Cache local de 6 h : évite de réinterroger OpenAlex à chaque ouverture (limites de débit)
+  const cache = lireCache("dndi_cache");
+  if (memesRequetes(cache) && Date.now() - new Date(cache.maj) < 6 * 3600e3) {
+    cache.etapes.forEach((s, i) => Object.assign(ETAPES[i], s, { erreur: null }));
+    derniereMaj = new Date(cache.maj);
+    colorier(); dessinerTout();
+    document.getElementById("maj").textContent = "Données en cache du " + dateFr(cache.maj) + " (Actualiser pour interroger OpenAlex)";
+    chargerReference();
+  } else {
+    dessinerTout();
+    toutCharger();
+  }
+}
+</script>
+
+
+</body></html>

@@ -26,9 +26,9 @@ Pour éviter les conflits, une seule personne modifie `docs/index.html` à la fo
 
 | Zone | Responsable |
 |---|---|
-| Carte vivante (`docs/`) | [Prénom] |
-| Matrice Operalta + MCP | [Prénom] |
-| Pitch + documentation | [Prénom] |
+| Carte vivante (`docs/`) | Marwan |
+| Matrice Operalta + MCP | Yohan |
+| Pitch + documentation | Menna |
 
 ## Messages de commit
 Un verbe à l'impératif et ce que ça change : `Corrige la requête Accès`, `Ajoute la vue quadrant`.

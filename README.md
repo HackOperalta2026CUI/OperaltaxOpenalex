@@ -50,12 +50,12 @@ Le détail des couleurs et des limites est dans [documentation/methode.md](docum
 
 ## GitHub Pages
 
-Settings → Pages → *Deploy from a branch* → `main` / `/docs`. La carte est alors accessible à l'adresse `https://<compte>.github.io/dndi-chagas-carte-vivante/`. Chaque visiteur saisit sa propre clé OpenAlex.
+Settings → Pages → *Deploy from a branch* → `main` / `/docs`. La carte est alors accessible à l'adresse https://hackoperalta2026cui.github.io/OperaltaxOpenalex/. Chaque visiteur saisit sa propre clé OpenAlex.
 
 ## Équipe
 
-- [Prénom Nom]
-- [Prénom Nom]
+- Menna Mahmoud
+- Randrianasolo Rabehaja Néaria Yohan
 - Marwan Ben Mansour
 
 ## Sources et attribution

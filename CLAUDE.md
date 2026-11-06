@@ -11,7 +11,10 @@ Projet étudiant (Digital Innovation Week 2026, UNIGE, défi 13 Operalta). Nous 
 - `data/` : exports datés, à nommer `AAAA-MM-JJ_matrice_operalta.csv`.
 
 ## Règles de calcul
-- Couverture = études de l'étape / études de l'étape la mieux documentée.
+- Deux méthodes, au choix dans la page (`METHODE`) :
+  - « titre seul » (par défaut, celle du pitch) : tous les mots de la requête dans le titre (`title.search`) ; couverture calculée sur les études depuis 2020 ;
+  - « titre + résumé » : `title_and_abstract.search` + un mot exigé dans le titre ; couverture sur toutes les années.
+- Couverture = études de l'étape / études de l'étape la mieux documentée (selon la base de la méthode).
 - Couleurs : vert ≥ 50 %, jaune 20–50 %, rouge < 20 %.
 - Tendance « en essor » : au moins 50 % des études datent de 2020 ou après.
 - Le volume d'études ne mesure pas leur qualité : toujours le rappeler.

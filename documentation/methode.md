@@ -6,9 +6,11 @@
 Persona : une responsable de programme chez DNDi, avec un budget limité et plusieurs pistes possibles.
 
 ## Ce que fait la carte
-Pour chaque étape, une requête OpenAlex filtre :
-- par titre et résumé (`title_and_abstract.search`) ;
-- par un mot exigé dans le titre (`title.search`), pour écarter les articles hors sujet.
+Deux méthodes, au choix en haut de la page :
+- **« titre seul »** (par défaut, celle du pitch) : tous les mots de la requête doivent figurer dans le titre (`title.search`). La couverture est calculée sur les études depuis 2020.
+- **« titre + résumé »** : mots cherchés dans le titre ou le résumé (`title_and_abstract.search`), plus un mot exigé dans le titre. La couverture est calculée sur toutes les années.
+
+Le classement des étapes est le même avec les deux méthodes.
 
 Puis l'outil calcule :
 - le **total** d'études, et le nombre d'études **depuis 2020** ;

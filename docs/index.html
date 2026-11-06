@@ -106,6 +106,10 @@
     <h1>Quelle piste de traitement DNDi doit-elle prioriser contre la maladie de Chagas ?</h1>
   </div>
   <div class="barre">
+    <select id="methode" aria-label="Méthode de comptage" title="Méthode de comptage">
+      <option value="titre">Titre seul</option>
+      <option value="resume">Titre + résumé</option>
+    </select>
     <input id="cle" type="password" placeholder="Clé API OpenAlex" aria-label="Clé API OpenAlex">
     <button class="action" id="actualiser">↻ Actualiser</button>
     <button class="secondaire" id="dl-json">Télécharger JSON</button>
@@ -137,7 +141,7 @@
 </div>
 
 <section class="vue active" id="v-carte">
-  <p class="explication">Les étapes de la décision dans l'ordre. Couleur = couverture scientifique comparée à l'étape la mieux documentée :
+  <p class="explication">Les étapes de la décision dans l'ordre. Méthode <span id="methode-texte"></span>. Couleur = couverture scientifique comparée à l'étape la mieux documentée :
     🟢 ≥ 50 % · 🟡 20–50 % · 🔴 &lt; 20 % (angle mort) · 📈 sujet en essor (≥ 50 % d'études depuis 2020).</p>
   <div class="carte" id="carte"></div>
 </section>
@@ -181,6 +185,14 @@ let derniereMaj = null;
 // pour que la page fonctionne sans réseau (ex. une fois importée dans Operalta).
 const DONNEES_FIGEES = null;
 
+/* ---------- Méthode de comptage ----------
+   titre  : tous les mots de la requête dans le TITRE ; couverture calculée sur les études depuis 2020 (méthode du pitch)
+   resume : mots dans le titre OU le résumé + un mot obligatoire dans le titre ; couverture sur toutes les années */
+let METHODE = "titre";
+try { METHODE = localStorage.getItem("dndi_methode") || "titre"; } catch (_) {}
+if (DONNEES_FIGEES) METHODE = DONNEES_FIGEES.methode || "resume";
+const LIBELLE_METHODE = { titre: "« titre seul » (couverture sur les études depuis 2020)", resume: "« titre + résumé » (couverture sur toutes les années)" };
+
 const esc = s => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
 const pct = v => Math.round((v || 0) * 100) + " %";
 const pause = ms => new Promise(r => setTimeout(r, ms));
@@ -208,7 +220,10 @@ async function appel(params) {
 }
 const compter = async filtre => (await appel({ filter: filtre, per_page: 1, select: "id" })).meta.count;
 
-const filtreDe = e => "title_and_abstract.search:" + e.requete + (e.titre ? ",title.search:" + e.titre : "");
+const filtreDe = e => METHODE === "titre"
+  ? "title.search:" + e.requete
+  : "title_and_abstract.search:" + e.requete + (e.titre ? ",title.search:" + e.titre : "");
+const baseDe = e => (METHODE === "titre" ? e.recent : e.total) || 0;
 // Provenance : lien public vers la requête OpenAlex qui produit un chiffre (sans la clé API)
 const lienOA = filtre => API + "?" + new URLSearchParams({ filter: filtre, per_page: 5, select: "title,publication_year,doi" });
 
@@ -231,9 +246,9 @@ async function analyser(e) {
 }
 
 function colorier() {
-  const max = Math.max(1, ...ETAPES.map(e => e.total || 0));
+  const max = Math.max(1, ...ETAPES.map(baseDe));
   for (const e of ETAPES) {
-    e.couverture = (e.total || 0) / max;
+    e.couverture = baseDe(e) / max;
     e.couleur = e.erreur ? null : e.couverture >= SEUIL_VERT ? "vert" : e.couverture >= SEUIL_JAUNE ? "jaune" : "rouge";
   }
 }
@@ -262,12 +277,13 @@ let referenceLabel = "";
 function lireCache(cle) { try { return JSON.parse(localStorage.getItem(cle)); } catch (_) { return null; } }
 function ecrireCache(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (_) {} }
 const instantane = () => ({
+  methode: METHODE,
   maj: (derniereMaj || new Date()).toISOString(),
   etapes: ETAPES.map(e => ({ id: e.id, requete: e.requete, titre: e.titre, total: e.total, recent: e.recent,
     part_recente: e.part_recente, acces_libre: e.acces_libre, part_acces_libre: e.part_acces_libre, suisse: e.suisse,
     en_essor: e.en_essor, articles: e.articles, couverture: e.couverture, couleur: e.couleur })),
 });
-const memesRequetes = snap => snap && snap.etapes.length === ETAPES.length &&
+const memesRequetes = snap => snap && (snap.methode || "resume") === METHODE && snap.etapes.length === ETAPES.length &&
   snap.etapes.every((s, i) => s.requete === ETAPES[i].requete && (s.titre || "") === (ETAPES[i].titre || ""));
 const dateFr = d => new Date(d).toLocaleString("fr-CH", { dateStyle: "short", timeStyle: "short" });
 
@@ -290,10 +306,16 @@ async function chargerReference() {
     document.getElementById("evolution").textContent = "Calcul de la situation au " + new Date(choix).toLocaleDateString("fr-CH") + "…";
     const veille = new Date(new Date(choix) - 864e5).toISOString().slice(0, 10);
     try {
-      for (const e of ETAPES) { e.ref_total = await compter(filtreDe(e) + ",to_publication_date:" + veille); await pause(120); }
+      for (const e of ETAPES) {
+        e.ref_total = await compter(filtreDe(e) + ",to_publication_date:" + veille); await pause(120);
+        e.ref_base = METHODE === "titre"
+          ? await compter(filtreDe(e) + ",publication_year:>" + (ANNEE_RECENTE - 1) + ",to_publication_date:" + veille)
+          : e.ref_total;
+        await pause(120);
+      }
     } catch (err) { document.getElementById("evolution").textContent = "⚠ " + err.message; return; }
-    const max = Math.max(1, ...ETAPES.map(e => e.ref_total));
-    ETAPES.forEach(e => { const c = e.ref_total / max; e.ref_couleur = c >= SEUIL_VERT ? "vert" : c >= SEUIL_JAUNE ? "jaune" : "rouge"; });
+    const max = Math.max(1, ...ETAPES.map(e => e.ref_base));
+    ETAPES.forEach(e => { const c = e.ref_base / max; e.ref_couleur = c >= SEUIL_VERT ? "vert" : c >= SEUIL_JAUNE ? "jaune" : "rouge"; });
     referenceLabel = "le " + new Date(choix).toLocaleDateString("fr-CH", { dateStyle: "long" }).replace(/^1 /, "1er ");
   }
   dessinerTout(); dessinerEvolution();
@@ -476,7 +498,7 @@ document.getElementById("dl-json").onclick = () =>
 document.getElementById("dl-csv").onclick = () => {
   const cell = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lignes = [["Étape", "Requête OpenAlex", "Mot obligatoire dans le titre", "Nb études", "Études depuis 2020", "Part récente (%)",
-    "Couverture vs meilleure étape (%)", "Couleur", "En essor", "Accès libre (%)", "Avec auteur en Suisse",
+    "Couverture vs meilleure étape (%) — " + (METHODE === "titre" ? "titre seul, études depuis 2020" : "titre + résumé, toutes années"), "Couleur", "En essor", "Accès libre (%)", "Avec auteur en Suisse",
     "Article clé 1", "Article clé 2", "Article clé 3"]];
   for (const e of exportDonnees()) {
     const arts = e.articles.map(a => `${a.titre} (${a.annee}, ${a.citations} citations) ${a.lien}`);
@@ -497,13 +519,23 @@ document.getElementById("dl-html").onclick = () => {
     alert("Attends que toutes les étapes soient chargées sans erreur avant de télécharger.");
     return;
   }
-  const figees = { maj: (derniereMaj || new Date()).toISOString(), etapes: ETAPES };
+  const figees = { methode: METHODE, maj: (derniereMaj || new Date()).toISOString(), etapes: ETAPES };
   const source = "<!doctype html>\n" + document.documentElement.outerHTML
     .replace("const DONNEES_FIGEES = null;", "const DONNEES_FIGEES = " + JSON.stringify(figees).replace(/</g, "\\u003c") + ";");
   telecharger("carte_dndi_autonome.html", source, "text/html");
 };
 
 document.getElementById("actualiser").onclick = toutCharger;
+const choixMethode = document.getElementById("methode");
+choixMethode.value = METHODE;
+document.getElementById("methode-texte").textContent = LIBELLE_METHODE[METHODE];
+choixMethode.onchange = () => {
+  METHODE = choixMethode.value;
+  try { localStorage.setItem("dndi_methode", METHODE); } catch (_) {}
+  document.getElementById("methode-texte").textContent = LIBELLE_METHODE[METHODE];
+  ETAPES.forEach(e => { e.total = null; e.ref_total = null; e.ref_base = null; });
+  toutCharger();
+};
 if (DONNEES_FIGEES) {
   // Version autonome : on affiche les données intégrées, sans appeler OpenAlex.
   DONNEES_FIGEES.etapes.forEach((d, i) => Object.assign(ETAPES[i], d));

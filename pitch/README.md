@@ -1,6 +1,8 @@
-# Pitch (10 minutes)
+# Pitch — oral de 7 minutes + 3 minutes de questions
 
-- `plan_oral_pitch.xlsx` : le plan chronométré par slide, avec une colonne pour les temps de répétition.
-- Le deck « Où la science rencontre la décision » et les scripts par personne sont des artifacts Claude. Ils sont privés : leur propriétaire doit les partager pour que l'équipe y accède.
+- `slides_7min.pdf` : le deck « Chagas – DNDi : la carte des preuves » (11 slides + 2 annexes), export PDF du 6 novembre 2026.
+- `script_oral_7min.md` : le texte exact de chacun, slide par slide, avec le minutage et les réponses aux questions probables du jury.
 
-Structure : Problème (slides 1–3) → Solution (4–6) → Démo (7–9) → Suite (10–12).
+Répartition : Menna 2 min 25 (ouverture, contexte, conclusion) · Marwan 2 min 15 (méthode, résultats, carte en direct) · Yohan 1 min 55 (Operalta, limites, recommandations).
+
+Le deck et le script vivent aussi en ligne comme artifacts Claude (privés : leur propriétaire doit les partager). Les fichiers de ce dossier en sont une copie figée.
